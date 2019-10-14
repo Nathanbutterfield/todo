@@ -9,159 +9,21 @@ import IconButton from "@material-ui/core/IconButton";
 import MenuIcon from "@material-ui/icons/Menu";
 import Drawer from "@material-ui/core/Drawer";
 import { Link, Route } from "react-router-dom";
-import { auth } from "./firebase";
-
-export function SignIn(props) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(u => {
-      if (u) {
-        props.history.push("/app");
-      }
-    });
-    return unsubscribe;
-  }, [props.history]);
-
-  const handleSignIn = () => {
-    auth
-      .signInWithEmailAndPassword(email, password)
-      .then(() => {})
-      .catch(error => {
-        alert(error.message);
-      });
-  };
-
-  return (
-    <div>
-      <AppBar position="static" color="primary">
-        <Toolbar>
-          <Typography color="inherit" variant="h6">
-            Sign In
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <Paper style={{ width: "400px", marginTop: 30, padding: "40px" }}>
-          <TextField
-            fullWidth={true}
-            placeholder="email"
-            value={email}
-            onChange={e => {
-              setEmail(e.target.value);
-            }}
-          />
-          <TextField
-            type={"password"}
-            fullWidth={true}
-            placeholder="password"
-            value={password}
-            onChange={e => {
-              setPassword(e.target.value);
-            }}
-            style={{ marginTop: 20 }}
-          />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: "30px",
-              alignItems: "center"
-            }}
-          >
-            <div>
-              Don't have an account? <Link to="/signup">Sign up!</Link>
-            </div>
-            <Button color="primary" variant="contained" onClick={handleSignIn}>
-              Sign In
-            </Button>
-          </div>
-        </Paper>
-      </div>
-    </div>
-  );
-}
-
-export function SignUp(props) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(u => {
-      if (u) {
-        props.history.push("/app");
-      }
-    });
-    return unsubscribe;
-  }, [props.history]);
-
-  const handleSignUp = () => {
-    auth
-      .createUserWithEmailAndPassword(email, password)
-      .then(() => {})
-      .catch(error => {
-        alert(error.message);
-      });
-  };
-
-  return (
-    <div>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography color="inherit" variant="h6">
-            Sign Up
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <Paper style={{ width: "400px", marginTop: 30, padding: "40px" }}>
-          <TextField
-            fullWidth={true}
-            placeholder="email"
-            value={email}
-            onChange={e => {
-              setEmail(e.target.value);
-            }}
-          />
-          <TextField
-            type={"password"}
-            fullWidth={true}
-            placeholder="password"
-            value={password}
-            onChange={e => {
-              setPassword(e.target.value);
-            }}
-            style={{ marginTop: 20 }}
-          />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: "30px",
-              alignItems: "center"
-            }}
-          >
-            <div>
-              Already have an account? <Link to="/">Sign in!</Link>
-            </div>
-            <Button color="primary" variant="contained" onClick={handleSignUp}>
-              Sign Up
-            </Button>
-          </div>
-        </Paper>
-      </div>
-    </div>
-  );
-}
+import { auth, db } from "./firebase";
+import List from "@material-ui/core/List";
+import ListItem from "@material-ui/core/ListItem";
+import ListItemIcon from "@material-ui/core/ListItemIcon";
+import ListItemSecondaryAction from "@material-ui/core/ListItemSecondaryAction";
+import ListItemText from "@material-ui/core/ListItemText";
+import Checkbox from "@material-ui/core/Checkbox";
+import DeleteIcon from "@material-ui/icons/Delete";
 
 export function App(props) {
   const [user, setUser] = useState(null);
-  const [drawer_open, setDrawerOpen] = useState(false);
-
-  const handleCloseDrawer = () => {
-    setDrawerOpen(false);
-  };
+  const [tasks, setTasks] = useState([
+    { id: 1, text: "some task", checked: false },
+    { id: 2, text: "another task", checked: true }
+  ]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(u => {
@@ -174,6 +36,31 @@ export function App(props) {
     return unsubscribe;
   }, [props.history]);
 
+  useEffect(() => {
+    let unsubscribe;
+
+    if (user) {
+      unsubscribe = db
+        .collection("users")
+        .doc(user.uid)
+        .collection("tasks")
+        .onSnapshot(snapshot => {
+          const updated_tasks = [];
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            updated_tasks.push({
+              text: data.text,
+              checked: data.checked,
+              id: doc.id
+            });
+          });
+          setTasks(updated_tasks);
+        });
+    }
+
+    return unsubscribe;
+  }, [user]);
+
   const handleSignOut = () => {
     auth
       .signOut()
@@ -185,6 +72,18 @@ export function App(props) {
       });
   };
 
+  const handleAddTask = () => {
+    console.log("add task");
+  };
+
+  const handleDeleteTask = () => {
+    console.log("delete task");
+  };
+
+  const handleCheckTask = checked => {
+    console.log("check task", checked);
+  };
+
   if (!user) {
     return <div />;
   }
@@ -193,21 +92,12 @@ export function App(props) {
     <div>
       <AppBar position="static">
         <Toolbar>
-          <IconButton
-            edge="start"
-            color="inherit"
-            onClick={() => {
-              setDrawerOpen(true);
-            }}
-          >
-            <MenuIcon />
-          </IconButton>
           <Typography
             color="inherit"
             variant="h6"
             style={{ marginLeft: 15, flexGrow: 1 }}
           >
-            My App
+            To Do List
           </Typography>
           <Typography color="inherit" style={{ marginRight: 30 }}>
             Hi! {user.email}
@@ -217,9 +107,67 @@ export function App(props) {
           </Button>
         </Toolbar>
       </AppBar>
-      <Drawer open={drawer_open} onClose={handleCloseDrawer}>
-        I'm a drawer
-      </Drawer>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center"
+        }}
+      >
+        <Paper
+          style={{
+            maxWidth: "500px",
+            width: "100%",
+            marginTop: 30,
+            padding: "40px"
+          }}
+        >
+          <Typography variant={"h6"}> To Do List </Typography>
+          <div style={{ display: "flex", marginTop: "40px" }}>
+            <TextField
+              fullWidth
+              placeholder="Add a new task here"
+              style={{ marginRight: "30px" }}
+            />
+            <Button color="primary" variant="contained" onClick={handleAddTask}>
+              {" "}
+              Add{" "}
+            </Button>
+          </div>
+          <List>
+            {tasks.map(value => {
+              const labelId = `checkbox-list-label-${value}`;
+
+              return (
+                <ListItem key={value.id}>
+                  <ListItemIcon>
+                    <Checkbox
+                      edge="start"
+                      checked={value.checked}
+                      tabIndex={-1}
+                      disableRipple
+                      inputProps={{ "aria-labelledby": labelId }}
+                      onChange={(e, checked) => {
+                        handleCheckTask(checked);
+                      }}
+                    />
+                  </ListItemIcon>
+                  <ListItemText id={labelId} primary={value.text} />
+                  <ListItemSecondaryAction>
+                    <IconButton
+                      edge="end"
+                      aria-label="comments"
+                      onClick={handleDeleteTask}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              );
+            })}
+          </List>
+        </Paper>
+      </div>
     </div>
   );
 }
